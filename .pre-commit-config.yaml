@@ -10,7 +10,8 @@ repos:
     rev: v3.27.0
     hooks:
       - id: commitizen
-        stages: [commit-msg]
+      - id: commitizen-branch
+        stages: [manual]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.6
     hooks:
