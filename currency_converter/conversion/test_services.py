@@ -326,3 +326,10 @@ class TestExchangeRateService:
         final_rate = to_currency_rate / from_currency_rate
         assert conversion.rate == final_rate
         assert conversion.converted_amount == amount * final_rate
+
+    def test_get_datetime_from_timestamp(self):
+        timestamp = MOCK_EXCHANGE_RATES["timestamp"]
+        expected_datetime = "2024-05-30 18:29:04+00:00"
+        assert expected_datetime == str(
+            ExchangeRateService().parse_timestamp_to_datetime(timestamp)
+        )

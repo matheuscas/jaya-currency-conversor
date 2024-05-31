@@ -37,7 +37,7 @@ class ExchangeRateService:
                 f"{response['error']['code']}: {response['error']['info']}"
             )
 
-    def get_datetime_from_timestamp(self, timestamp: int) -> datetime:
+    def parse_timestamp_to_datetime(self, timestamp: int) -> datetime:
         return datetime.fromtimestamp(timestamp, pytz.UTC)
 
     def get_latest_rates(self) -> dict: ...
@@ -45,7 +45,7 @@ class ExchangeRateService:
     def convert_amount(
         self, request: ConversionRequest, rates: dict
     ) -> ConversionResponse:
-        created_at = self.get_datetime_from_timestamp(rates["timestamp"])
+        created_at = self.parse_timestamp_to_datetime(rates["timestamp"])
         if request.from_currency == rates["base"]:
             rate = rates["rates"][request.to_currency]
             return ConversionResponse(
