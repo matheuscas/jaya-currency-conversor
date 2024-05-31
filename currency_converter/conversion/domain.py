@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
 
 
 @dataclass
@@ -19,7 +20,7 @@ class ConversionResponse:
 
 @dataclass
 class Conversion:
-    id: str
     user_id: str
     request: ConversionRequest
     response: ConversionResponse
+    id: Optional[str] = None
