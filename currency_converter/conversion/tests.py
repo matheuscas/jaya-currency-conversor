@@ -1,4 +1,5 @@
 # Create your tests here.
+from decimal import Decimal
 import os
 import pytest
 from unittest.mock import patch
@@ -216,16 +217,29 @@ def setenvvar(monkeypatch):
 def test_currency_not_found_expect_exception(mocked_get_latest_rates):
     service = ExchangeRateService()
     conversion_request = ConversionRequest(
-        from_currency="INVALID", to_currency="USD", amount=100.0
+        from_currency="INVALID", to_currency="USD", amount=Decimal(100.0)
     )
     with pytest.raises(CurrencyNotFoundException):
         service.get_conversion_from(request=conversion_request)
 
 
-def test_both_currencies_are_the_same_expect_rate_of_1():
+@patch.object(ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES)
+def test_both_currencies_are_the_same_but_invalid_expect_exception(
+    mocked_get_latest_rates,
+):
     service = ExchangeRateService()
     conversion_request = ConversionRequest(
-        from_currency="USD", to_currency="USD", amount=100.0
+        from_currency="INVALID", to_currency="INVALID", amount=Decimal(100.0)
+    )
+    with pytest.raises(CurrencyNotFoundException):
+        service.get_conversion_from(request=conversion_request)
+
+
+@patch.object(ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES)
+def test_both_currencies_are_the_same_expect_rate_of_1(mocked_get_latest_rates):
+    service = ExchangeRateService()
+    conversion_request = ConversionRequest(
+        from_currency="USD", to_currency="USD", amount=Decimal(100.0)
     )
     conversion = service.get_conversion_from(request=conversion_request)
     assert conversion.rate == 1
@@ -237,7 +251,63 @@ def test_both_currencies_are_the_same_expect_rate_of_1():
 def test_error_response_expect_exception(mocked_get_latest_rates):
     service = ExchangeRateService()
     conversion_request = ConversionRequest(
-        from_currency="EUR", to_currency="USD", amount=100.0
+        from_currency="EUR", to_currency="USD", amount=Decimal(100.0)
     )
     with pytest.raises(ConversionRateServiceException):
         service.get_conversion_from(request=conversion_request)
+
+
+@patch.object(ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES)
+def test_from_currency_is_equals_to_base_expect_correct_response(
+    mocked_get_latest_rates,
+):
+    service = ExchangeRateService()
+    amount = Decimal(98.12)
+    conversion_request = ConversionRequest(
+        from_currency="EUR", to_currency="USD", amount=amount
+    )
+    conversion = service.get_conversion_from(request=conversion_request)
+    assert (
+        conversion.rate == MOCK_EXCHANGE_RATES["rates"][conversion_request.to_currency]
+    )
+    assert conversion.converted_amount == amount * Decimal(
+        MOCK_EXCHANGE_RATES["rates"][conversion_request.to_currency]
+    )
+
+
+@patch.object(ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES)
+def test_to_currency_is_equals_to_base_expect_correct_response(mocked_get_latest_rates):
+    service = ExchangeRateService()
+    amount = Decimal(14.12)
+    conversion_request = ConversionRequest(
+        from_currency="USD", to_currency="EUR", amount=amount
+    )
+    conversion = service.get_conversion_from(request=conversion_request)
+    assert conversion.rate == Decimal(1) / Decimal(
+        MOCK_EXCHANGE_RATES["rates"][conversion_request.from_currency]
+    )
+    assert conversion.converted_amount == amount / Decimal(
+        MOCK_EXCHANGE_RATES["rates"][conversion_request.from_currency]
+    )
+
+
+@patch.object(ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES)
+def test_both_currencies_are_different_from_base_expect_correct_response(
+    mocked_get_latest_rates,
+):
+    service = ExchangeRateService()
+    amount = Decimal(0.50)
+    conversion_request = ConversionRequest(
+        from_currency="USD", to_currency="VEF", amount=amount
+    )
+    conversion = service.get_conversion_from(request=conversion_request)
+
+    to_currency_rate = Decimal(
+        MOCK_EXCHANGE_RATES["rates"][conversion_request.to_currency]
+    )
+    from_currency_rate = Decimal(
+        MOCK_EXCHANGE_RATES["rates"][conversion_request.from_currency]
+    )
+    final_rate = to_currency_rate / from_currency_rate
+    assert conversion.rate == final_rate
+    assert conversion.converted_amount == amount * final_rate

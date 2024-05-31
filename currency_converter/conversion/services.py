@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Protocol
 
 import pytz
@@ -21,33 +22,51 @@ class ExchangeRateService:
     url = f"http://api.exchangeratesapi.io/v1/latest?access_key={settings.EXCHANGE_API_KEY}"
 
     def get_conversion_from(self, request: ConversionRequest) -> ConversionResponse:
-        if request.from_currency == request.to_currency:
-            return ConversionResponse(
-                rate=1, created_at=datetime.now(), converted_amount=request.amount
-            )
+        response = self.get_latest_rates()
+        if response["success"]:
+            if (
+                request.from_currency not in response["rates"]
+                or request.to_currency not in response["rates"]
+            ):
+                raise CurrencyNotFoundException(
+                    f"{request.from_currency} or {request.to_currency} not found"
+                )
+            return self.convert_amount(request, response)
         else:
-            response = self.get_latest_rates()
-            if response["success"]:
-                if (
-                    request.from_currency not in response["rates"]
-                    or request.to_currency not in response["rates"]
-                ):
-                    raise CurrencyNotFoundException(
-                        f"{request.from_currency} or {request.to_currency} not found"
-                    )
-
-                return ConversionResponse(
-                    rate=response["rates"][request.to_currency],
-                    created_at=self.get_datetime_from_timestamp(response["timestamp"]),
-                    converted_amount=request.amount
-                    * response["rates"][request.to_currency],
-                )
-            else:
-                raise ConversionRateServiceException(
-                    f"{response['error']['code']}: {response['error']['info']}"
-                )
+            raise ConversionRateServiceException(
+                f"{response['error']['code']}: {response['error']['info']}"
+            )
 
     def get_datetime_from_timestamp(self, timestamp: int) -> datetime:
         return datetime.fromtimestamp(timestamp, pytz.UTC)
 
     def get_latest_rates(self) -> dict: ...
+
+    def convert_amount(
+        self, request: ConversionRequest, rates: dict
+    ) -> ConversionResponse:
+        created_at = self.get_datetime_from_timestamp(rates["timestamp"])
+        if request.from_currency == rates["base"]:
+            rate = rates["rates"][request.to_currency]
+            return ConversionResponse(
+                rate=rate,
+                created_at=created_at,
+                converted_amount=Decimal(request.amount)
+                * Decimal(rates["rates"][request.to_currency]),
+            )
+        elif request.to_currency == rates["base"]:
+            rate = Decimal(1) / Decimal(rates["rates"][request.from_currency])
+            return ConversionResponse(
+                rate=rate,
+                created_at=created_at,
+                converted_amount=Decimal(request.amount) * rate,
+            )
+        else:
+            from_currency_rate = Decimal(rates["rates"][request.from_currency])
+            to_currency_rate = Decimal(rates["rates"][request.to_currency])
+            final_rate = to_currency_rate / from_currency_rate
+            return ConversionResponse(
+                rate=final_rate,
+                created_at=created_at,
+                converted_amount=Decimal(request.amount) * final_rate,
+            )
