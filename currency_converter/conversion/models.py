@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Conversion(models.Model):
-    user_id = models.ForeignKey(
+    user = models.ForeignKey(
         CustomUser, on_delete=models.CASCADE, related_name="conversions"
     )
     from_currency = models.CharField(max_length=3)
