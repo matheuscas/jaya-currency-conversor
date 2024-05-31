@@ -5,12 +5,13 @@ import pytest
 from unittest.mock import patch
 from unittest import mock
 
-from conversion.domain import ConversionRequest
+from conversion.domain import Conversion, ConversionRequest, ConversionResponse
 from conversion.exceptions import (
     ConversionRateServiceException,
     CurrencyNotFoundException,
 )
-from conversion.services import ExchangeRateService
+from conversion.services import ConversionDbService, ExchangeRateService
+from conversion.models import Conversion as ConversionModel  # type: ignore
 
 
 MOCK_EXCHANGE_RATES = {
@@ -333,3 +334,91 @@ class TestExchangeRateService:
         assert expected_datetime == str(
             ExchangeRateService().parse_timestamp_to_datetime(timestamp)
         )
+
+
+@pytest.mark.django_db()
+class TestConversionDbService:
+    @pytest.fixture
+    def user(self, django_user_model):
+        yield django_user_model.objects.create_user(
+            email="some@email.com", password="something"
+        )
+        django_user_model.objects.all().delete()
+
+    @pytest.fixture
+    def teardown_conversions(self):
+        yield
+        ConversionModel.objects.all().delete()
+
+    def test_user_has_no_conversions_expect_empty_list(self, user):
+        service = ConversionDbService()
+        assert service.listByUser(user_id=user.external_id) == []
+
+    def test_user_has_conversions_expect_filled_list(
+        self, user, teardown_conversions, django_user_model
+    ):
+        other_user = django_user_model.objects.create_user(
+            email="other@email.com", password="something"
+        )
+        num_of_conversions_for_user = 2
+        for _ in range(num_of_conversions_for_user):
+            ConversionModel.objects.create(
+                user=user,
+                from_currency="USD",
+                from_amount=Decimal(100.0),
+                to_currency="USD",
+                to_amount=Decimal(98.12),
+                rate=Decimal(1.0),
+                created_at="2024-05-30 18:29:04+00:00",
+            )
+
+        ConversionModel.objects.create(
+            user=other_user,
+            from_currency="USD",
+            from_amount=Decimal(100.0),
+            to_currency="EUR",
+            to_amount=Decimal(98.12),
+            rate=Decimal(1.0),
+            created_at="2024-05-30 18:29:04+00:00",
+        )
+
+        service = ConversionDbService()
+        conversions = service.listByUser(user_id=user.external_id)
+        assert len(conversions) == num_of_conversions_for_user
+
+        conversions = service.listByUser(user_id=other_user.external_id)
+        assert len(conversions) == 1
+
+    def test_conversion_is_properly_created_expect_all_fields_properly_set(
+        self, user, teardown_conversions
+    ):
+        conversion = Conversion(
+            user_id=user.external_id,
+            request=ConversionRequest(
+                from_currency="EUR",
+                to_currency="USD",
+                amount=Decimal(98.12),
+            ),
+            response=ConversionResponse(
+                converted_amount=Decimal(98.12),
+                rate=Decimal(1.0),
+                created_at="2024-05-30 18:29:04+00:00",
+            ),
+        )
+
+        service = ConversionDbService()
+        created_conversion = service.create(conversion)
+
+        assert created_conversion.id is not None
+        assert created_conversion.user_id == user.external_id
+        assert (
+            created_conversion.request.from_currency == conversion.request.from_currency
+        )
+        assert created_conversion.request.to_currency == conversion.request.to_currency
+        assert created_conversion.request.amount == conversion.request.amount
+        assert (
+            created_conversion.response.converted_amount
+            == conversion.response.converted_amount
+        )
+        assert created_conversion.response.rate == conversion.response.rate
+        assert created_conversion.response.created_at == conversion.response.created_at
