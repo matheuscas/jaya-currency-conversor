@@ -27,14 +27,15 @@ class ExchangeRateService:
             )
         else:
             response = self.get_latest_rates()
-            if (
-                request.from_currency not in response["rates"]
-                or request.to_currency not in response["rates"]
-            ):
-                raise CurrencyNotFoundException(
-                    f"{request.from_currency} or {request.to_currency} not found"
-                )
             if response["success"]:
+                if (
+                    request.from_currency not in response["rates"]
+                    or request.to_currency not in response["rates"]
+                ):
+                    raise CurrencyNotFoundException(
+                        f"{request.from_currency} or {request.to_currency} not found"
+                    )
+
                 return ConversionResponse(
                     rate=response["rates"][request.to_currency],
                     created_at=self.get_datetime_from_timestamp(response["timestamp"]),

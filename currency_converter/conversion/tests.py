@@ -5,7 +5,10 @@ from unittest.mock import patch
 from unittest import mock
 
 from conversion.domain import ConversionRequest
-from conversion.exceptions import CurrencyNotFoundException
+from conversion.exceptions import (
+    ConversionRateServiceException,
+    CurrencyNotFoundException,
+)
 from conversion.services import ExchangeRateService
 
 
@@ -189,6 +192,14 @@ MOCK_EXCHANGE_RATES = {
     },
 }
 
+MOCK_ERROR_EXCHANGE_RATES = {
+    "success": False,
+    "error": {
+        "code": 105,
+        "info": "Rate limit exceeded",
+    },
+}
+
 
 @pytest.fixture(autouse=True)
 def setenvvar(monkeypatch):
@@ -218,3 +229,15 @@ def test_both_currencies_are_the_same_expect_rate_of_1():
     )
     conversion = service.get_conversion_from(request=conversion_request)
     assert conversion.rate == 1
+
+
+@patch.object(
+    ExchangeRateService, "get_latest_rates", return_value=MOCK_ERROR_EXCHANGE_RATES
+)
+def test_error_response_expect_exception(mocked_get_latest_rates):
+    service = ExchangeRateService()
+    conversion_request = ConversionRequest(
+        from_currency="EUR", to_currency="USD", amount=100.0
+    )
+    with pytest.raises(ConversionRateServiceException):
+        service.get_conversion_from(request=conversion_request)
