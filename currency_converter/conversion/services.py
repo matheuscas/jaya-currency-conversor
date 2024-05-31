@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Protocol
 
-import pytz
+import pytz  # type: ignore
 
 from conversion.domain import ConversionRequest, ConversionResponse
 from django.conf import settings
@@ -40,7 +40,8 @@ class ExchangeRateService:
     def parse_timestamp_to_datetime(self, timestamp: int) -> datetime:
         return datetime.fromtimestamp(timestamp, pytz.UTC)
 
-    def get_latest_rates(self) -> dict: ...
+    def get_latest_rates(self) -> dict:
+        return {}
 
     def convert_amount(
         self, request: ConversionRequest, rates: dict
