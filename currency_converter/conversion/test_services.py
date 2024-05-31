@@ -339,13 +339,6 @@ class TestExchangeRateService:
 @pytest.mark.django_db()
 class TestConversionDbService:
     @pytest.fixture
-    def user(self, django_user_model):
-        yield django_user_model.objects.create_user(
-            email="some@email.com", password="something"
-        )
-        django_user_model.objects.all().delete()
-
-    @pytest.fixture
     def teardown_conversions(self):
         yield
         ConversionModel.objects.all().delete()
