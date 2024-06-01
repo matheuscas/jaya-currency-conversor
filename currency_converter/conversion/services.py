@@ -106,7 +106,7 @@ class ConversionDbService:
             user_conversions.append(
                 Conversion(
                     id=conversion.id,
-                    user_id=conversion.user_id,
+                    user_id=conversion.user.external_id,
                     request=ConversionRequest(
                         from_currency=conversion.from_currency,
                         amount=conversion.from_amount,

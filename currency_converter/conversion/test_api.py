@@ -1,10 +1,16 @@
 from unittest.mock import patch
 import pytest
+import datetime
 from django.urls import reverse
+from pytz import timezone  # type: ignore
 from rest_framework import status
 
 from conversion.services import ExchangeRateService
 from conversion.test_services import MOCK_ERROR_EXCHANGE_RATES, MOCK_EXCHANGE_RATES
+from conversion.models import Conversion as ConversionModel  # type: ignore
+
+
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S %Z%z"
 
 
 class TestCreateConversionView:
@@ -65,6 +71,7 @@ class TestCreateConversionView:
         assert response.status_code == status.HTTP_200_OK
         assert data["to_amount"] == converted_amount
         assert data["id"] is not None
+        assert data["user_id"] == user.external_id
 
     @pytest.mark.parametrize(
         "from_currency, to_currency",
@@ -108,12 +115,38 @@ class TestCreateConversionView:
         )
 
 
+@pytest.mark.django_db()
 class TestGetUserConversionsView:
-    def test_user_has_no_conversions_expect_empty_list(self):
-        pass
+    def test_user_has_no_conversions_expect_empty_list(self, client, user):
+        response = client.get(reverse("conversions-user-list", args=[user.external_id]))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == []
 
-    def test_user_has_conversions_expect_filled_list(self):
-        pass
+    def test_user_has_conversions_expect_filled_list(
+        self, client, user, teardown_conversions
+    ):
+        conversion_item = ConversionModel.objects.create(
+            user=user,
+            from_currency="EUR",
+            from_amount=100,
+            to_currency="USD",
+            to_amount=108.40,
+            rate=1.2,
+            created_at=datetime.datetime.now(timezone("UTC")),
+        )
 
-    def test_user_does_not_exist_expect_exception_status_400(self):
-        pass
+        response = client.get(reverse("conversions-user-list", args=[user.external_id]))
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["user_id"] == user.external_id
+        assert data[0]["from_currency"] == "EUR"
+        assert data[0]["amount"] == "100.00"
+        assert data[0]["to_currency"] == "USD"
+        assert data[0]["to_amount"] == "108.40"
+        assert data[0]["rate"] == "1.20"
+        assert data[0]["created_at"] == conversion_item.created_at.strftime(DATE_FORMAT)
+
+    def test_user_does_not_exist_expect_exception_status_400(self, client, user):
+        response = client.get(reverse("conversions-user-list", args=[1]))
+        assert response.status_code == status.HTTP_403_FORBIDDEN

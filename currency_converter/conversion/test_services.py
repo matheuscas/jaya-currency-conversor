@@ -2,6 +2,7 @@
 from decimal import Decimal
 import os
 import pytest
+import datetime
 from unittest.mock import patch
 from unittest import mock
 
@@ -338,11 +339,6 @@ class TestExchangeRateService:
 
 @pytest.mark.django_db()
 class TestConversionDbService:
-    @pytest.fixture
-    def teardown_conversions(self):
-        yield
-        ConversionModel.objects.all().delete()
-
     def test_user_has_no_conversions_expect_empty_list(self, user):
         service = ConversionDbService()
         assert service.listByUser(user_id=user.external_id) == []
@@ -362,7 +358,7 @@ class TestConversionDbService:
                 to_currency="USD",
                 to_amount=Decimal(98.12),
                 rate=Decimal(1.0),
-                created_at="2024-05-30 18:29:04+00:00",
+                created_at=datetime.datetime.now(tz=datetime.timezone.utc),
             )
 
         ConversionModel.objects.create(
@@ -372,7 +368,7 @@ class TestConversionDbService:
             to_currency="EUR",
             to_amount=Decimal(98.12),
             rate=Decimal(1.0),
-            created_at="2024-05-30 18:29:04+00:00",
+            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
         )
 
         service = ConversionDbService()
@@ -395,7 +391,7 @@ class TestConversionDbService:
             response=ConversionResponse(
                 converted_amount=Decimal(98.12),
                 rate=Decimal(1.0),
-                created_at="2024-05-30 18:29:04+00:00",
+                created_at=datetime.datetime.now(tz=datetime.timezone.utc),
             ),
         )
 
