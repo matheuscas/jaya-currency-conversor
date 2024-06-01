@@ -17,6 +17,10 @@ from conversion.exceptions import (
     CurrencyNotFoundException,
 )
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 
 class ConversionRatesProtocol(Protocol):
     def __init__(self, cache: "ConversionRatesCacheService") -> None: ...
@@ -37,11 +41,22 @@ class ExchangeRatesAPI:
                 request.from_currency not in response["rates"]
                 or request.to_currency not in response["rates"]
             ):
+                logger.exception(
+                    "Currency not found",
+                    from_currency=request.from_currency,
+                    to_currency=request.to_currency,
+                )
                 raise CurrencyNotFoundException(
                     f"{request.from_currency} or {request.to_currency} not found"
                 )
+            logger.info("Conversion success", **dataclasses.asdict(request))
             return self.convert_amount(request, response)
         else:
+            logger.exception(
+                "Api internal error",
+                code=response["error"]["code"],
+                info=response["error"]["info"],
+            )
             raise ConversionRateServiceException(
                 f"{response['error']['code']}: {response['error']['info']}"
             )
@@ -52,8 +67,10 @@ class ExchangeRatesAPI:
     def get_latest_rates(self) -> dict:
         data_in_cache = self.cache_service.get_rates(self.todays_key)
         if data_in_cache:
+            logger.info("Rates from cache")
             return data_in_cache
         else:
+            logger.info("Rates from API")
             response = requests.get(self.url)
             data = response.json()
             self.cache_service.save_rates(self.todays_key, data)

@@ -15,6 +15,10 @@ from conversion.exceptions import (
     CurrencyNotFoundException,
 )
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 
 class InputSerializer(serializers.Serializer):
     from_currency = serializers.CharField()
@@ -38,6 +42,7 @@ class CreateConversionView(APIView):
             try:
                 User.objects.get(external_id=serializer.validated_data["user_id"])
             except User.DoesNotExist:
+                logger.exception("User does not exist", **serializer.validated_data)
                 raise exceptions.PermissionDenied()
 
             conversion_request = ConversionRequest(
@@ -54,10 +59,12 @@ class CreateConversionView(APIView):
                     conversion_request
                 )
             except CurrencyNotFoundException as cnfe:
+                logger.exception(str(cnfe), **serializer.validated_data)
                 raise exceptions.ValidationError(str(cnfe))
             except Exception as e:
                 # it covers ConversionRateServiceException
                 # and any other exception from requests.get
+                logger.exception(str(e), **serializer.validated_data)
                 raise exceptions.APIException(str(e))
 
             conversion = Conversion(
@@ -66,20 +73,19 @@ class CreateConversionView(APIView):
                 response=conversion_response,
             )
             successful_conversion = ConversionDbService().create(conversion)
+            formatted_conversion = {
+                "id": successful_conversion.id,
+                "user_id": successful_conversion.user_id,
+                "from_currency": successful_conversion.request.from_currency,
+                "amount": successful_conversion.request.amount,
+                "to_currency": successful_conversion.request.to_currency,
+                "to_amount": successful_conversion.response.converted_amount,
+                "rate": successful_conversion.response.rate,
+                "created_at": successful_conversion.response.created_at,
+            }
+            logger.info("Conversion created", **formatted_conversion)
             return Response(
-                OutputSerializer(
-                    {
-                        "id": successful_conversion.id,
-                        "user_id": successful_conversion.user_id,
-                        "from_currency": successful_conversion.request.from_currency,
-                        "amount": successful_conversion.request.amount,
-                        "to_currency": successful_conversion.request.to_currency,
-                        "to_amount": successful_conversion.response.converted_amount,
-                        "rate": successful_conversion.response.rate,
-                        "created_at": successful_conversion.response.created_at,
-                    }
-                ).data,
-                status=status.HTTP_200_OK,
+                OutputSerializer(formatted_conversion).data, status=status.HTTP_200_OK
             )
 
 
@@ -89,6 +95,7 @@ class GetUserConversionsView(APIView):
         try:
             User.objects.get(external_id=user_id)
         except User.DoesNotExist:
+            logger.exception("User does not exist", user_id=user_id)
             raise exceptions.PermissionDenied()
 
         user_conversions = ConversionDbService().listByUser(user_id=user_id)
