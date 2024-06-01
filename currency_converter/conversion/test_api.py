@@ -4,7 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from conversion.services import ExchangeRateService
-from conversion.test_services import MOCK_EXCHANGE_RATES
+from conversion.test_services import MOCK_ERROR_EXCHANGE_RATES, MOCK_EXCHANGE_RATES
 
 
 class TestCreateConversionView:
@@ -66,7 +66,46 @@ class TestCreateConversionView:
         assert data["to_amount"] == converted_amount
         assert data["id"] is not None
 
-    # TODO test exceptions comming from ExchangeRateService
+    @pytest.mark.parametrize(
+        "from_currency, to_currency",
+        [
+            ("EUR", "YYY"),
+            ("XXX", "USD"),
+        ],
+    )
+    @patch.object(
+        ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
+    )
+    def test_invalid_currency_expect_exception_status_400(
+        self, mocked_get_latest_rates, from_currency, to_currency, client, user
+    ):
+        payload = {
+            "from_currency": from_currency,
+            "to_currency": to_currency,
+            "amount": 98.12,
+            "user_id": user.external_id,
+        }
+        response = client.post(reverse("conversion-create"), payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    @patch.object(
+        ExchangeRateService, "get_latest_rates", return_value=MOCK_ERROR_EXCHANGE_RATES
+    )
+    def test_failed_response_expect_exception_status_relative_to_external_api(
+        self, mocked_get_latest_rates, client, user
+    ):
+        payload = {
+            "from_currency": "EUR",
+            "to_currency": "USD",
+            "amount": 98.12,
+            "user_id": user.external_id,
+        }
+        response = client.post(reverse("conversion-create"), payload, format="json")
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert (
+            response.json()["detail"]
+            == f"{MOCK_ERROR_EXCHANGE_RATES['error']['code']}: {MOCK_ERROR_EXCHANGE_RATES['error']['info']}"
+        )
 
 
 class TestGetUserConversionsView:

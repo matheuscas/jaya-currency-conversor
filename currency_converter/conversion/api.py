@@ -9,6 +9,10 @@ from conversion.services import (
     ConversionService,
     ExchangeRateService,
 )
+from conversion.exceptions import (
+    ConversionRateServiceException,
+    CurrencyNotFoundException,
+)
 
 
 class InputSerializer(serializers.Serializer):
@@ -41,10 +45,15 @@ class CreateConversionView(APIView):
                 amount=serializer.validated_data["amount"],
             )
 
-            conversion_service = ConversionService(ExchangeRateService())
-            conversion_response = conversion_service.convert_currency(
-                conversion_request
-            )
+            try:
+                conversion_service = ConversionService(ExchangeRateService())
+                conversion_response = conversion_service.convert_currency(
+                    conversion_request
+                )
+            except CurrencyNotFoundException as cnfe:
+                raise exceptions.ValidationError(str(cnfe))
+            except ConversionRateServiceException as crse:
+                raise exceptions.APIException(str(crse))
 
             conversion = Conversion(
                 user_id=serializer.validated_data["user_id"],
