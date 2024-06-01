@@ -6,11 +6,12 @@ from django.contrib.auth import get_user_model
 from conversion.domain import Conversion, ConversionRequest
 from conversion.services import (
     ConversionDbService,
+    ConversionRateCacheService,
     ConversionService,
     ExchangeRateService,
+    MidnightCache,
 )
 from conversion.exceptions import (
-    ConversionRateServiceException,
     CurrencyNotFoundException,
 )
 
@@ -46,14 +47,18 @@ class CreateConversionView(APIView):
             )
 
             try:
-                conversion_service = ConversionService(ExchangeRateService())
+                conversion_service = ConversionService(
+                    ExchangeRateService(ConversionRateCacheService(MidnightCache()))
+                )
                 conversion_response = conversion_service.convert_currency(
                     conversion_request
                 )
             except CurrencyNotFoundException as cnfe:
                 raise exceptions.ValidationError(str(cnfe))
-            except ConversionRateServiceException as crse:
-                raise exceptions.APIException(str(crse))
+            except Exception as e:
+                # it covers ConversionRateServiceException
+                # and any other exception from requests.get
+                raise exceptions.APIException(str(e))
 
             conversion = Conversion(
                 user_id=serializer.validated_data["user_id"],

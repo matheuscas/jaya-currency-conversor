@@ -1,14 +1,16 @@
 import dataclasses
-from datetime import datetime
+import datetime
 from decimal import Decimal
-from typing import Protocol
+from typing import Any, Protocol
 
 import pytz  # type: ignore
+import requests  # type: ignore
 
 from conversion.models import Conversion as ConversionModel  # type: ignore
 from conversion.domain import Conversion, ConversionRequest, ConversionResponse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 
 from conversion.exceptions import (
     ConversionRateServiceException,
@@ -17,10 +19,14 @@ from conversion.exceptions import (
 
 
 class ConversionRateServiceProtocol(Protocol):
+    def __init__(self, cache: "ConversionRateCacheService") -> None: ...
     def get_conversion_from(self, request: ConversionRequest) -> ConversionResponse: ...
 
 
 class ExchangeRateService:
+    def __init__(self, cache_service: "ConversionRateCacheService") -> None:
+        self.cache_service = cache_service
+
     # By default it uses EUR as base
     url = f"http://api.exchangeratesapi.io/v1/latest?access_key={settings.EXCHANGE_API_KEY}"
 
@@ -40,11 +46,23 @@ class ExchangeRateService:
                 f"{response['error']['code']}: {response['error']['info']}"
             )
 
-    def parse_timestamp_to_datetime(self, timestamp: int) -> datetime:
-        return datetime.fromtimestamp(timestamp, pytz.UTC)
+    def parse_timestamp_to_datetime(self, timestamp: int) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(timestamp, pytz.UTC)
 
     def get_latest_rates(self) -> dict:
-        return {}
+        data_in_cache = self.cache_service.get_rates(self.todays_key)
+        if data_in_cache:
+            return data_in_cache
+        else:
+            response = requests.get(self.url)
+            data = response.json()
+            self.cache_service.save_rates(self.todays_key, data)
+            return data
+
+    @property
+    def todays_key(self) -> str:
+        today = datetime.datetime.now(tz=pytz.UTC)
+        return f"{today:%Y-%m-%d}"
 
     def convert_amount(
         self, request: ConversionRequest, rates: dict
@@ -120,3 +138,48 @@ class ConversionDbService:
                 )
             )
         return user_conversions
+
+
+class CacheProtocol(Protocol):
+    def set(self, key, value, timeout=300, version=None) -> None: ...
+    def get(self, key, default=None, version=None) -> Any: ...
+
+
+class MidnightCache:
+    """ "
+    MidnightCache is a cache object that automatically expires at midnight.
+    It provides a convenient way to store data that should expire at the end of the day.
+    It is based on Django's cache object.
+    """
+
+    def set(self, key, value, timeout=86400, version=None) -> None:
+        """
+        This method sets a value in the cache with a specific key, a timeout (default is 24 hours), and an optional version.
+        The timeout is overwritten by the number of seconds until midnight.
+        The timeout argument is kept for backwards compatibility.
+        """
+        cache.set(
+            key, value, timeout=self.calculate_seconds_until_midnight(), version=version
+        )
+
+    def get(self, key, default=None, version=None) -> Any:
+        return cache.get(key, default=default, version=version)
+
+    def calculate_seconds_until_midnight(self) -> int:
+        now = datetime.datetime.now()
+        midnight = datetime.datetime.combine(
+            now.date(), datetime.time()
+        ) + datetime.timedelta(days=1)
+        time_left = (midnight - now).total_seconds()
+        return int(time_left)  # one second less or more is irrelevant
+
+
+class ConversionRateCacheService:
+    def __init__(self, cache: CacheProtocol) -> None:
+        self.cache = cache
+
+    def get_rates(self, key, default=None, version=None) -> Any:
+        return self.cache.get(key, default=default, version=version)
+
+    def save_rates(self, key, value, timeout=300, version=None) -> None:
+        self.cache.set(key, value, timeout=timeout, version=version)

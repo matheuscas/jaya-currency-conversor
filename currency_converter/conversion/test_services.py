@@ -1,17 +1,21 @@
 # Create your tests here.
 from decimal import Decimal
-import os
+from freezegun import freeze_time
 import pytest
 import datetime
 from unittest.mock import patch
-from unittest import mock
 
 from conversion.domain import Conversion, ConversionRequest, ConversionResponse
 from conversion.exceptions import (
     ConversionRateServiceException,
     CurrencyNotFoundException,
 )
-from conversion.services import ConversionDbService, ExchangeRateService
+from conversion.services import (
+    ConversionDbService,
+    ExchangeRateService,
+    MidnightCache,
+    requests,
+)
 from conversion.models import Conversion as ConversionModel  # type: ignore
 
 
@@ -204,15 +208,12 @@ MOCK_ERROR_EXCHANGE_RATES = {
 }
 
 
-@pytest.fixture(autouse=True)
-def setenvvar(monkeypatch):
-    with mock.patch.dict(os.environ, clear=True):
-        envvars = {
-            "EXCHANGE_API_KEY": "KEY",
-        }
-        for k, v in envvars.items():
-            monkeypatch.setenv(k, v)
-        yield
+class MockedConversionRateCacheService:
+    def get_rates(self, *args, **kwargs):
+        return None
+
+    def save_rates(self, *args, **kwargs):
+        pass
 
 
 class TestExchangeRateService:
@@ -220,7 +221,7 @@ class TestExchangeRateService:
         ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
     )
     def test_currency_not_found_expect_exception(self, mocked_get_latest_rates):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         conversion_request = ConversionRequest(
             from_currency="INVALID", to_currency="USD", amount=Decimal(100.0)
         )
@@ -234,7 +235,7 @@ class TestExchangeRateService:
         self,
         mocked_get_latest_rates,
     ):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         conversion_request = ConversionRequest(
             from_currency="INVALID", to_currency="INVALID", amount=Decimal(100.0)
         )
@@ -247,7 +248,7 @@ class TestExchangeRateService:
     def test_both_currencies_are_the_same_expect_rate_of_1(
         self, mocked_get_latest_rates
     ):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         conversion_request = ConversionRequest(
             from_currency="USD", to_currency="USD", amount=Decimal(100.0)
         )
@@ -258,7 +259,7 @@ class TestExchangeRateService:
         ExchangeRateService, "get_latest_rates", return_value=MOCK_ERROR_EXCHANGE_RATES
     )
     def test_error_response_expect_exception(self, mocked_get_latest_rates):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         conversion_request = ConversionRequest(
             from_currency="EUR", to_currency="USD", amount=Decimal(100.0)
         )
@@ -272,7 +273,7 @@ class TestExchangeRateService:
         self,
         mocked_get_latest_rates,
     ):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         amount = Decimal(98.12)
         conversion_request = ConversionRequest(
             from_currency="EUR", to_currency="USD", amount=amount
@@ -292,7 +293,7 @@ class TestExchangeRateService:
     def test_to_currency_is_equals_to_base_expect_correct_response(
         self, mocked_get_latest_rates
     ):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         amount = Decimal(14.12)
         conversion_request = ConversionRequest(
             from_currency="USD", to_currency="EUR", amount=amount
@@ -312,7 +313,7 @@ class TestExchangeRateService:
         self,
         mocked_get_latest_rates,
     ):
-        service = ExchangeRateService()
+        service = ExchangeRateService(MockedConversionRateCacheService())
         amount = Decimal(0.50)
         conversion_request = ConversionRequest(
             from_currency="USD", to_currency="VEF", amount=amount
@@ -333,8 +334,39 @@ class TestExchangeRateService:
         timestamp = MOCK_EXCHANGE_RATES["timestamp"]
         expected_datetime = "2024-05-30 18:29:04+00:00"
         assert expected_datetime == str(
-            ExchangeRateService().parse_timestamp_to_datetime(timestamp)
+            ExchangeRateService(
+                MockedConversionRateCacheService()
+            ).parse_timestamp_to_datetime(timestamp)
         )
+
+    @freeze_time("2024-05-30")
+    def test_todays_key_expect_full_year_month_day(self):
+        assert (
+            "2024-05-30"
+            == ExchangeRateService(MockedConversionRateCacheService()).todays_key
+        )
+
+    @patch.object(requests, "get")
+    @patch.object(MockedConversionRateCacheService, "save_rates")
+    @patch.object(
+        MockedConversionRateCacheService, "get_rates", return_value=MOCK_EXCHANGE_RATES
+    )
+    def test_get_latest_rates_expect_use_cache(
+        self, mocked_cache_get, mocked_cache_set, mocked_get
+    ):
+        ExchangeRateService(MockedConversionRateCacheService()).get_latest_rates()
+        assert mocked_cache_set.call_count == 0
+        assert mocked_get.call_count == 0
+
+    @patch.object(requests, "get")
+    @patch.object(MockedConversionRateCacheService, "save_rates")
+    @patch.object(MockedConversionRateCacheService, "get_rates", return_value=None)
+    def test_get_latest_rates_expect_fetch_rates(
+        self, mocked_cache_get, mocked_cache_set, mocked_get
+    ):
+        ExchangeRateService(MockedConversionRateCacheService()).get_latest_rates()
+        assert mocked_cache_set.call_count == 1
+        assert mocked_get.call_count == 1
 
 
 @pytest.mark.django_db()
@@ -411,3 +443,10 @@ class TestConversionDbService:
         )
         assert created_conversion.response.rate == conversion.response.rate
         assert created_conversion.response.created_at == conversion.response.created_at
+
+
+class TestMidnightCache:
+    freeze_time("2024-05-30 23:00:00+00:00")
+
+    def test_calculate_midnight_offset(self):
+        MidnightCache().calculate_seconds_until_midnight() == 3600
