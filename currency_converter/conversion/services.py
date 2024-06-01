@@ -19,12 +19,12 @@ from conversion.exceptions import (
 
 
 class ConversionRatesProtocol(Protocol):
-    def __init__(self, cache: "ConversionRateCacheService") -> None: ...
+    def __init__(self, cache: "ConversionRatesCacheService") -> None: ...
     def get_conversion_from(self, request: ConversionRequest) -> ConversionResponse: ...
 
 
 class ExchangeRatesAPI:
-    def __init__(self, cache_service: "ConversionRateCacheService") -> None:
+    def __init__(self, cache_service: "ConversionRatesCacheService") -> None:
         self.cache_service = cache_service
 
     # By default it uses EUR as base
@@ -174,7 +174,7 @@ class MidnightCache:
         return int(time_left)  # one second less or more is irrelevant
 
 
-class ConversionRateCacheService:
+class ConversionRatesCacheService:
     def __init__(self, cache: CacheProtocol) -> None:
         self.cache = cache
 

@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from conversion.domain import Conversion, ConversionRequest
 from conversion.services import (
     ConversionDbService,
-    ConversionRateCacheService,
+    ConversionRatesCacheService,
     ConversionService,
     ExchangeRatesAPI,
     MidnightCache,
@@ -48,7 +48,7 @@ class CreateConversionView(APIView):
 
             try:
                 conversion_service = ConversionService(
-                    ExchangeRatesAPI(ConversionRateCacheService(MidnightCache()))
+                    ExchangeRatesAPI(ConversionRatesCacheService(MidnightCache()))
                 )
                 conversion_response = conversion_service.convert_currency(
                     conversion_request

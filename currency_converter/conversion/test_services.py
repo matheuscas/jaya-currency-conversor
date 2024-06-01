@@ -208,7 +208,7 @@ MOCK_ERROR_EXCHANGE_RATES = {
 }
 
 
-class MockedConversionRateCacheService:
+class MockedConversionRatesCacheService:
     def get_rates(self, *args, **kwargs):
         return None
 
@@ -221,7 +221,7 @@ class TestExchangeRatesAPI:
         ExchangeRatesAPI, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
     )
     def test_currency_not_found_expect_exception(self, mocked_get_latest_rates):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         conversion_request = ConversionRequest(
             from_currency="INVALID", to_currency="USD", amount=Decimal(100.0)
         )
@@ -235,7 +235,7 @@ class TestExchangeRatesAPI:
         self,
         mocked_get_latest_rates,
     ):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         conversion_request = ConversionRequest(
             from_currency="INVALID", to_currency="INVALID", amount=Decimal(100.0)
         )
@@ -248,7 +248,7 @@ class TestExchangeRatesAPI:
     def test_both_currencies_are_the_same_expect_rate_of_1(
         self, mocked_get_latest_rates
     ):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         conversion_request = ConversionRequest(
             from_currency="USD", to_currency="USD", amount=Decimal(100.0)
         )
@@ -259,7 +259,7 @@ class TestExchangeRatesAPI:
         ExchangeRatesAPI, "get_latest_rates", return_value=MOCK_ERROR_EXCHANGE_RATES
     )
     def test_error_response_expect_exception(self, mocked_get_latest_rates):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         conversion_request = ConversionRequest(
             from_currency="EUR", to_currency="USD", amount=Decimal(100.0)
         )
@@ -273,7 +273,7 @@ class TestExchangeRatesAPI:
         self,
         mocked_get_latest_rates,
     ):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         amount = Decimal(98.12)
         conversion_request = ConversionRequest(
             from_currency="EUR", to_currency="USD", amount=amount
@@ -293,7 +293,7 @@ class TestExchangeRatesAPI:
     def test_to_currency_is_equals_to_base_expect_correct_response(
         self, mocked_get_latest_rates
     ):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         amount = Decimal(14.12)
         conversion_request = ConversionRequest(
             from_currency="USD", to_currency="EUR", amount=amount
@@ -313,7 +313,7 @@ class TestExchangeRatesAPI:
         self,
         mocked_get_latest_rates,
     ):
-        service = ExchangeRatesAPI(MockedConversionRateCacheService())
+        service = ExchangeRatesAPI(MockedConversionRatesCacheService())
         amount = Decimal(0.50)
         conversion_request = ConversionRequest(
             from_currency="USD", to_currency="VEF", amount=amount
@@ -335,7 +335,7 @@ class TestExchangeRatesAPI:
         expected_datetime = "2024-05-30 18:29:04+00:00"
         assert expected_datetime == str(
             ExchangeRatesAPI(
-                MockedConversionRateCacheService()
+                MockedConversionRatesCacheService()
             ).parse_timestamp_to_datetime(timestamp)
         )
 
@@ -343,28 +343,28 @@ class TestExchangeRatesAPI:
     def test_todays_key_expect_full_year_month_day(self):
         assert (
             "2024-05-30"
-            == ExchangeRatesAPI(MockedConversionRateCacheService()).todays_key
+            == ExchangeRatesAPI(MockedConversionRatesCacheService()).todays_key
         )
 
     @patch.object(requests, "get")
-    @patch.object(MockedConversionRateCacheService, "save_rates")
+    @patch.object(MockedConversionRatesCacheService, "save_rates")
     @patch.object(
-        MockedConversionRateCacheService, "get_rates", return_value=MOCK_EXCHANGE_RATES
+        MockedConversionRatesCacheService, "get_rates", return_value=MOCK_EXCHANGE_RATES
     )
     def test_get_latest_rates_expect_use_cache(
         self, mocked_cache_get, mocked_cache_set, mocked_get
     ):
-        ExchangeRatesAPI(MockedConversionRateCacheService()).get_latest_rates()
+        ExchangeRatesAPI(MockedConversionRatesCacheService()).get_latest_rates()
         assert mocked_cache_set.call_count == 0
         assert mocked_get.call_count == 0
 
     @patch.object(requests, "get")
-    @patch.object(MockedConversionRateCacheService, "save_rates")
-    @patch.object(MockedConversionRateCacheService, "get_rates", return_value=None)
+    @patch.object(MockedConversionRatesCacheService, "save_rates")
+    @patch.object(MockedConversionRatesCacheService, "get_rates", return_value=None)
     def test_get_latest_rates_expect_fetch_rates(
         self, mocked_cache_get, mocked_cache_set, mocked_get
     ):
-        ExchangeRatesAPI(MockedConversionRateCacheService()).get_latest_rates()
+        ExchangeRatesAPI(MockedConversionRatesCacheService()).get_latest_rates()
         assert mocked_cache_set.call_count == 1
         assert mocked_get.call_count == 1
 
