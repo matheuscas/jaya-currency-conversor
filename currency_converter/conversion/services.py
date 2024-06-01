@@ -18,7 +18,7 @@ from conversion.exceptions import (
 )
 
 
-class ConversionRateServiceProtocol(Protocol):
+class ConversionRatesProtocol(Protocol):
     def __init__(self, cache: "ConversionRateCacheService") -> None: ...
     def get_conversion_from(self, request: ConversionRequest) -> ConversionResponse: ...
 
@@ -95,7 +95,7 @@ class ExchangeRatesAPI:
 
 
 class ConversionService:
-    def __init__(self, conversion_rate_service: ConversionRateServiceProtocol) -> None:
+    def __init__(self, conversion_rate_service: ConversionRatesProtocol) -> None:
         self.conversion_rate_service = conversion_rate_service
 
     def convert_currency(self, request: ConversionRequest) -> ConversionResponse:
