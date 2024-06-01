@@ -4,7 +4,11 @@ from rest_framework import serializers, exceptions, status
 from django.contrib.auth import get_user_model
 
 from conversion.domain import Conversion, ConversionRequest
-from conversion.services import ConversionDbService, ExchangeRateService
+from conversion.services import (
+    ConversionDbService,
+    ConversionService,
+    ExchangeRateService,
+)
 
 
 class InputSerializer(serializers.Serializer):
@@ -36,8 +40,10 @@ class CreateConversionView(APIView):
                 to_currency=serializer.validated_data["to_currency"],
                 amount=serializer.validated_data["amount"],
             )
-            conversion_response = ExchangeRateService().get_conversion_from(
-                request=conversion_request
+
+            conversion_service = ConversionService(ExchangeRateService())
+            conversion_response = conversion_service.convert_currency(
+                conversion_request
             )
 
             conversion = Conversion(
