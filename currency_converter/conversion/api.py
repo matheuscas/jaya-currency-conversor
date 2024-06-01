@@ -8,7 +8,7 @@ from conversion.services import (
     ConversionDbService,
     ConversionRateCacheService,
     ConversionService,
-    ExchangeRateService,
+    ExchangeRatesAPI,
     MidnightCache,
 )
 from conversion.exceptions import (
@@ -48,7 +48,7 @@ class CreateConversionView(APIView):
 
             try:
                 conversion_service = ConversionService(
-                    ExchangeRateService(ConversionRateCacheService(MidnightCache()))
+                    ExchangeRatesAPI(ConversionRateCacheService(MidnightCache()))
                 )
                 conversion_response = conversion_service.convert_currency(
                     conversion_request

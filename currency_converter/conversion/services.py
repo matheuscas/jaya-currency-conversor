@@ -23,7 +23,7 @@ class ConversionRateServiceProtocol(Protocol):
     def get_conversion_from(self, request: ConversionRequest) -> ConversionResponse: ...
 
 
-class ExchangeRateService:
+class ExchangeRatesAPI:
     def __init__(self, cache_service: "ConversionRateCacheService") -> None:
         self.cache_service = cache_service
 

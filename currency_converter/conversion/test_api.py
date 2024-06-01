@@ -5,7 +5,7 @@ from django.urls import reverse
 from pytz import timezone  # type: ignore
 from rest_framework import status
 
-from conversion.services import ExchangeRateService
+from conversion.services import ExchangeRatesAPI
 from conversion.test_services import MOCK_ERROR_EXCHANGE_RATES, MOCK_EXCHANGE_RATES
 from conversion.models import Conversion as ConversionModel  # type: ignore
 
@@ -48,7 +48,7 @@ class TestCreateConversionView:
         ],
     )
     @patch.object(
-        ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
+        ExchangeRatesAPI, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
     )
     def test_success_conversion_expect_correct_response_format(
         self,
@@ -81,7 +81,7 @@ class TestCreateConversionView:
         ],
     )
     @patch.object(
-        ExchangeRateService, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
+        ExchangeRatesAPI, "get_latest_rates", return_value=MOCK_EXCHANGE_RATES
     )
     def test_invalid_currency_expect_exception_status_400(
         self, mocked_get_latest_rates, from_currency, to_currency, client, user
@@ -96,7 +96,7 @@ class TestCreateConversionView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     @patch.object(
-        ExchangeRateService, "get_latest_rates", return_value=MOCK_ERROR_EXCHANGE_RATES
+        ExchangeRatesAPI, "get_latest_rates", return_value=MOCK_ERROR_EXCHANGE_RATES
     )
     def test_failed_response_expect_exception_status_relative_to_external_api(
         self, mocked_get_latest_rates, client, user
