@@ -1,3 +1,4 @@
+import requests  # type: ignore
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, exceptions, status
@@ -12,22 +13,24 @@ from conversion.services import (
     MidnightCache,
 )
 from conversion.exceptions import (
+    ConversionRateServiceException,
     CurrencyNotFoundException,
 )
+from drf_spectacular.utils import extend_schema, OpenApiExample
 
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 
-class InputSerializer(serializers.Serializer):
+class ConversionRequestSerializer(serializers.Serializer):
     from_currency = serializers.CharField()
     to_currency = serializers.CharField()
     amount = serializers.DecimalField(max_digits=5, decimal_places=2)
     user_id = serializers.CharField()
 
 
-class OutputSerializer(InputSerializer):
+class ConversionResponseSerializer(ConversionRequestSerializer):
     id = serializers.IntegerField()
     to_amount = serializers.DecimalField(max_digits=5, decimal_places=2)
     rate = serializers.DecimalField(max_digits=5, decimal_places=2)
@@ -35,8 +38,42 @@ class OutputSerializer(InputSerializer):
 
 
 class CreateConversionView(APIView):
+    @extend_schema(
+        request=ConversionRequestSerializer,
+        responses={
+            200: ConversionResponseSerializer,
+        },
+        description="Request a new conversion",
+        tags=["Conversions"],
+        examples=[
+            OpenApiExample(
+                "New conversion request example",
+                value={
+                    "from_currency": "USD",
+                    "to_currency": "EUR",
+                    "amount": 100,
+                    "user_id": "user_123",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Conversion response example",
+                value={
+                    "id": 1,
+                    "user_id": "user_123",
+                    "from_currency": "USD",
+                    "amount": 100,
+                    "to_currency": "EUR",
+                    "to_amount": 108.40,
+                    "rate": 1.16,
+                    "created_at": "2024-06-02 15:56:58 UTC+0000",
+                },
+                response_only=True,
+            ),
+        ],
+    )
     def post(self, request):
-        serializer = InputSerializer(data=request.data)
+        serializer = ConversionRequestSerializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
             User = get_user_model()
             try:
@@ -61,11 +98,21 @@ class CreateConversionView(APIView):
             except CurrencyNotFoundException as cnfe:
                 logger.exception(str(cnfe), **serializer.validated_data)
                 raise exceptions.ValidationError(str(cnfe))
+            except ConversionRateServiceException as crse:
+                rate_service_error_code = str(crse).split(":")[0].strip()
+                rate_service_error_info = str(crse).split(":")[1].strip()
+                logger.exception(str(crse), **serializer.validated_data)
+                raise exceptions.APIException(
+                    detail=rate_service_error_info, code=rate_service_error_code
+                )
             except Exception as e:
-                # it covers ConversionRateServiceException
-                # and any other exception from requests.get
+                # any other exception like from requests.get
                 logger.exception(str(e), **serializer.validated_data)
-                raise exceptions.APIException(str(e))
+                if isinstance(e, requests.exceptions.RequestException):
+                    raise exceptions.APIException(
+                        detail=str(e), code=e.response.status_code
+                    )
+                raise exceptions.APIException(detail=str(e))
 
             conversion = Conversion(
                 user_id=serializer.validated_data["user_id"],
@@ -85,11 +132,45 @@ class CreateConversionView(APIView):
             }
             logger.info("Conversion created", **formatted_conversion)
             return Response(
-                OutputSerializer(formatted_conversion).data, status=status.HTTP_200_OK
+                ConversionResponseSerializer(formatted_conversion).data,
+                status=status.HTTP_201_CREATED,
             )
 
 
 class GetUserConversionsView(APIView):
+    @extend_schema(
+        responses={200: ConversionResponseSerializer},
+        description="Request user's conversions",
+        tags=["Conversions"],
+        examples=[
+            OpenApiExample(
+                "User's conversions response example",
+                value=[
+                    {
+                        "id": 1,
+                        "user_id": "user_123",
+                        "from_currency": "USD",
+                        "amount": 100,
+                        "to_currency": "EUR",
+                        "to_amount": 108.40,
+                        "rate": 1.16,
+                        "created_at": "2024-06-02 15:56:58 UTC+0000",
+                    },
+                    {
+                        "id": 2,
+                        "user_id": "user_123",
+                        "from_currency": "USD",
+                        "amount": 100,
+                        "to_currency": "BRL",
+                        "to_amount": 523.00,
+                        "rate": 5.23,
+                        "created_at": "2024-06-02 16:56:58 UTC+0000",
+                    },
+                ],
+                response_only=True,
+            ),
+        ],
+    )
     def get(self, request, user_id):
         User = get_user_model()
         try:
@@ -114,6 +195,6 @@ class GetUserConversionsView(APIView):
                 }
             )
         return Response(
-            OutputSerializer(output_conversions, many=True).data,
+            ConversionResponseSerializer(output_conversions, many=True).data,
             status=status.HTTP_200_OK,
         )
