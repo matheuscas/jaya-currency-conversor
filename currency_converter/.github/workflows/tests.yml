@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -36,3 +36,9 @@ jobs:
       - name: Run tests
         run: |
           poetry run python manage.py test
+
+      - name: Run Ruff
+        run: poetry run ruff check .
+
+      - name: Run mypy
+        run: poetry run mypy .
