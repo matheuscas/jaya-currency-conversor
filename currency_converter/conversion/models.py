@@ -14,6 +14,7 @@ class Conversion(models.Model):
     to_amount = models.DecimalField(_("To Amount"), max_digits=5, decimal_places=2)
     rate = models.DecimalField(_("Rate"), max_digits=5, decimal_places=2)
     rates_timestamp = models.DateTimeField(_("Rates Timestamp"))
+    created_at = models.DateTimeField(_("Created At"), auto_now_add=True, null=True)
 
     class Meta:
         verbose_name = _("Conversion")
