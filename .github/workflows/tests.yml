@@ -14,7 +14,7 @@ jobs:
       EXCHANGE_API_KEY: ${{ secrets.EXCHANGE_API_KEY }}
 
     steps:
-      - uses: ./.github/actions/setup-python-poetry.yml
+      - uses: ./.github/actions/setup-python-poetry
 
       - name: Install dependencies
         run: poetry install
