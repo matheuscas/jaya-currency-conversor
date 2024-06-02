@@ -14,7 +14,20 @@ jobs:
       EXCHANGE_API_KEY: ${{ secrets.EXCHANGE_API_KEY }}
 
     steps:
-      - uses: ./.github/actions/setup-python-poetry
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Add Poetry to PATH
+        run: echo "${{ runner.tool_cache }}/python/$(ls ${{ runner.tool_cache }}/python)/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: poetry install
