@@ -1,4 +1,4 @@
-name: CI
+name: Linting
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,14 +28,6 @@ jobs:
 
       - name: Install dependencies
         run: poetry install
-
-      - name: Run migrations
-        run: |
-          poetry run python manage.py migrate
-
-      - name: Run tests
-        run: |
-          poetry run python manage.py test
 
       - name: Run Ruff
         run: poetry run ruff check .
