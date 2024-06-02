@@ -13,7 +13,7 @@ class Conversion(models.Model):
     to_currency = models.CharField(max_length=3)
     to_amount = models.DecimalField(_("To Amount"), max_digits=5, decimal_places=2)
     rate = models.DecimalField(_("Rate"), max_digits=5, decimal_places=2)
-    created_at = models.DateTimeField(_("Created At"))
+    rates_timestamp = models.DateTimeField(_("Rates Timestamp"))
 
     class Meta:
         verbose_name = _("Conversion")

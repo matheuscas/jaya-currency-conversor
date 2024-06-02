@@ -14,7 +14,7 @@ class ConversionRequest:
 @dataclass
 class ConversionResponse:
     rate: Decimal
-    created_at: datetime
+    rates_timestamp: datetime
     converted_amount: Decimal
 
 

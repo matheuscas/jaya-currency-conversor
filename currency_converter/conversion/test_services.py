@@ -390,7 +390,7 @@ class TestConversionDbService:
                 to_currency="USD",
                 to_amount=Decimal(98.12),
                 rate=Decimal(1.0),
-                created_at=datetime.datetime.now(tz=datetime.timezone.utc),
+                rates_timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
             )
 
         ConversionModel.objects.create(
@@ -400,7 +400,7 @@ class TestConversionDbService:
             to_currency="EUR",
             to_amount=Decimal(98.12),
             rate=Decimal(1.0),
-            created_at=datetime.datetime.now(tz=datetime.timezone.utc),
+            rates_timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
         )
 
         service = ConversionDbService()
@@ -423,7 +423,7 @@ class TestConversionDbService:
             response=ConversionResponse(
                 converted_amount=Decimal(98.12),
                 rate=Decimal(1.0),
-                created_at=datetime.datetime.now(tz=datetime.timezone.utc),
+                rates_timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
             ),
         )
 
@@ -442,7 +442,10 @@ class TestConversionDbService:
             == conversion.response.converted_amount
         )
         assert created_conversion.response.rate == conversion.response.rate
-        assert created_conversion.response.created_at == conversion.response.created_at
+        assert (
+            created_conversion.response.rates_timestamp
+            == conversion.response.rates_timestamp
+        )
 
 
 class TestMidnightCache:

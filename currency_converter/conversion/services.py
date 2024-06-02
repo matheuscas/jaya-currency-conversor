@@ -84,12 +84,12 @@ class ExchangeRatesAPI:
     def convert_amount(
         self, request: ConversionRequest, rates: dict
     ) -> ConversionResponse:
-        created_at = self.parse_timestamp_to_datetime(rates["timestamp"])
+        rates_timestamp = self.parse_timestamp_to_datetime(rates["timestamp"])
         if request.from_currency == rates["base"]:
             rate = rates["rates"][request.to_currency]
             return ConversionResponse(
                 rate=rate,
-                created_at=created_at,
+                rates_timestamp=rates_timestamp,
                 converted_amount=Decimal(request.amount)
                 * Decimal(rates["rates"][request.to_currency]),
             )
@@ -97,7 +97,7 @@ class ExchangeRatesAPI:
             rate = Decimal(1) / Decimal(rates["rates"][request.from_currency])
             return ConversionResponse(
                 rate=rate,
-                created_at=created_at,
+                rates_timestamp=rates_timestamp,
                 converted_amount=Decimal(request.amount) * rate,
             )
         else:
@@ -106,7 +106,7 @@ class ExchangeRatesAPI:
             final_rate = to_currency_rate / from_currency_rate
             return ConversionResponse(
                 rate=final_rate,
-                created_at=created_at,
+                rates_timestamp=rates_timestamp,
                 converted_amount=Decimal(request.amount) * final_rate,
             )
 
@@ -128,7 +128,7 @@ class ConversionDbService:
             to_currency=conversion.request.to_currency,
             to_amount=conversion.response.converted_amount,
             rate=conversion.response.rate,
-            created_at=conversion.response.created_at,
+            rates_timestamp=conversion.response.rates_timestamp,
         )
         new_conversion: Conversion = dataclasses.replace(conversion)
         new_conversion.id = conversion_obj.id
@@ -150,7 +150,7 @@ class ConversionDbService:
                     response=ConversionResponse(
                         converted_amount=conversion.to_amount,
                         rate=conversion.rate,
-                        created_at=conversion.created_at,
+                        rates_timestamp=conversion.rates_timestamp,
                     ),
                 )
             )

@@ -34,7 +34,7 @@ class ConversionResponseSerializer(ConversionRequestSerializer):
     id = serializers.IntegerField()
     to_amount = serializers.DecimalField(max_digits=5, decimal_places=2)
     rate = serializers.DecimalField(max_digits=5, decimal_places=2)
-    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S %Z%z")
+    rates_timestamp = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S %Z%z")
 
 
 class CreateConversionView(APIView):
@@ -66,7 +66,7 @@ class CreateConversionView(APIView):
                     "to_currency": "EUR",
                     "to_amount": 108.40,
                     "rate": 1.16,
-                    "created_at": "2024-06-02 15:56:58 UTC+0000",
+                    "rates_timestamp": "2024-06-02 15:56:58 UTC+0000",
                 },
                 response_only=True,
             ),
@@ -128,7 +128,7 @@ class CreateConversionView(APIView):
                 "to_currency": successful_conversion.request.to_currency,
                 "to_amount": successful_conversion.response.converted_amount,
                 "rate": successful_conversion.response.rate,
-                "created_at": successful_conversion.response.created_at,
+                "rates_timestamp": successful_conversion.response.rates_timestamp,
             }
             logger.info("Conversion created", **formatted_conversion)
             return Response(
@@ -154,7 +154,7 @@ class GetUserConversionsView(APIView):
                         "to_currency": "EUR",
                         "to_amount": 108.40,
                         "rate": 1.16,
-                        "created_at": "2024-06-02 15:56:58 UTC+0000",
+                        "rates_timestamp": "2024-06-02 15:56:58 UTC+0000",
                     },
                     {
                         "id": 2,
@@ -164,7 +164,7 @@ class GetUserConversionsView(APIView):
                         "to_currency": "BRL",
                         "to_amount": 523.00,
                         "rate": 5.23,
-                        "created_at": "2024-06-02 16:56:58 UTC+0000",
+                        "rates_timestamp": "2024-06-02 16:56:58 UTC+0000",
                     },
                 ],
                 response_only=True,
@@ -191,7 +191,7 @@ class GetUserConversionsView(APIView):
                     "to_currency": conversion.request.to_currency,
                     "to_amount": conversion.response.converted_amount,
                     "rate": conversion.response.rate,
-                    "created_at": conversion.response.created_at,
+                    "rates_timestamp": conversion.response.rates_timestamp,
                 }
             )
         return Response(

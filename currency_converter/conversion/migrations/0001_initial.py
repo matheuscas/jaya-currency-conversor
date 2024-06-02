@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                         decimal_places=2, max_digits=5, verbose_name="Rate"
                     ),
                 ),
-                ("created_at", models.DateTimeField(verbose_name="Created At")),
+                ("rates_timestamp", models.DateTimeField(verbose_name="Created At")),
                 (
                     "user_id",
                     models.ForeignKey(

@@ -181,7 +181,7 @@ class TestGetUserConversionsView:
             to_currency="USD",
             to_amount=108.40,
             rate=1.2,
-            created_at=datetime.datetime.now(timezone("UTC")),
+            rates_timestamp=datetime.datetime.now(timezone("UTC")),
         )
 
         response = client.get(reverse("conversions-user-list", args=[user.external_id]))
@@ -194,7 +194,9 @@ class TestGetUserConversionsView:
         assert data[0]["to_currency"] == "USD"
         assert data[0]["to_amount"] == "108.40"
         assert data[0]["rate"] == "1.20"
-        assert data[0]["created_at"] == conversion_item.created_at.strftime(DATE_FORMAT)
+        assert data[0]["rates_timestamp"] == conversion_item.rates_timestamp.strftime(
+            DATE_FORMAT
+        )
 
     def test_user_does_not_exist_expect_exception_status_400(
         self, client, user, disable_throttling
