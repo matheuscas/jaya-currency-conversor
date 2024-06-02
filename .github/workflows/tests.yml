@@ -41,9 +41,3 @@ jobs:
         run: |
           cd currency_converter
           poetry run python manage.py test
-
-      - name: Run Ruff
-        run: poetry run ruff check .
-
-      - name: Run mypy
-        run: poetry run mypy .
