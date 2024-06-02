@@ -55,6 +55,10 @@ jobs:
           echo "Total Coverage: $total_coverage%"
           echo "##[set-output name=total_coverage;]$total_coverage"
 
+      - name: Debug Output
+        run: |
+          echo "Total Coverage (before comment step): $total_coverage"
+
       - name: Comment on pull request
         if: always()
         uses: actions/github-script@v4
@@ -64,6 +68,7 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            console.log("Total Coverage (inside comment script):", total_coverage);
             const message = `Test coverage: ${process.env.total_coverage}%`;
             github.issues.createComment({
               issue_number: prNumber,
