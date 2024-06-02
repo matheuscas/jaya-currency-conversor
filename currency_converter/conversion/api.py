@@ -1,4 +1,3 @@
-import requests  # type: ignore
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import serializers, exceptions, status
@@ -99,20 +98,14 @@ class CreateConversionView(APIView):
                 logger.exception(str(cnfe), **serializer.validated_data)
                 raise exceptions.ValidationError(str(cnfe))
             except ConversionRateServiceException as crse:
-                rate_service_error_code = str(crse).split(":")[0].strip()
-                rate_service_error_info = str(crse).split(":")[1].strip()
                 logger.exception(str(crse), **serializer.validated_data)
-                raise exceptions.APIException(
-                    detail=rate_service_error_info, code=rate_service_error_code
-                )
+                raise exceptions.APIException(detail=str(crse))
             except Exception as e:
                 # any other exception like from requests.get
                 logger.exception(str(e), **serializer.validated_data)
-                if isinstance(e, requests.exceptions.RequestException):
-                    raise exceptions.APIException(
-                        detail=str(e), code=e.response.status_code
-                    )
-                raise exceptions.APIException(detail=str(e))
+                api_exception = exceptions.APIException(detail=str(e))
+                api_exception.status_code = e.response.status_code
+                raise api_exception
 
             conversion = Conversion(
                 user_id=serializer.validated_data["user_id"],
