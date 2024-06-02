@@ -39,6 +39,7 @@ jobs:
 
       - name: Run tests
         run: |
+          cd currency_converter
           poetry run python manage.py test
 
       - name: Run Ruff
