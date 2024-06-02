@@ -42,7 +42,6 @@ jobs:
           cd currency_converter
           poetry run coverage run manage.py test
           poetry run coverage report -m > coverage_report.txt || echo "Failed to generate coverage report"
-          ls -al # List files in the current directory for debugging
           cat coverage_report.txt || echo "Failed to read coverage report"
           total_coverage=$(grep "^TOTAL" coverage_report.txt | awk '{print $NF}')
           echo "Total Coverage: $total_coverage%"
@@ -54,6 +53,7 @@ jobs:
           # Extract total coverage percentage and print it
           total_coverage=$(grep "^TOTAL" coverage_report.txt | awk '{print $NF}')
           echo "Total Coverage: $total_coverage%"
+          echo "##[set-output name=total_coverage;]$total_coverage"
 
       - name: Comment on pull request
         if: always()
@@ -64,7 +64,7 @@ jobs:
             const prNumber = context.payload.pull_request.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const message = `Test coverage: ${total_coverage}%`;
+            const message = `Test coverage: ${process.env.total_coverage}%`;
             github.issues.createComment({
               issue_number: prNumber,
               owner: owner,
