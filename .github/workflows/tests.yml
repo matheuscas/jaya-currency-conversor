@@ -37,7 +37,12 @@ jobs:
           cd currency_converter
           poetry run python manage.py migrate
 
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
           cd currency_converter
-          poetry run python manage.py test
+          poetry run coverage run manage.py test
+
+      - name: Generate coverage report
+        run: |
+          cd currency_converter
+          poetry run coverage report -m
