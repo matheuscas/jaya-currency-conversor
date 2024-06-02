@@ -37,11 +37,17 @@ class ConversionResponseSerializer(ConversionRequestSerializer):
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S %Z%z")
 
 
+class ErrorResponseSerializer(serializers.Serializer):
+    detail = serializers.JSONField()
+
+
 class CreateConversionView(APIView):
     @extend_schema(
         request=ConversionRequestSerializer,
         responses={
             200: ConversionResponseSerializer,
+            400: ErrorResponseSerializer,
+            500: ErrorResponseSerializer,
         },
         description="Request a new conversion",
         tags=["Conversions"],
@@ -70,6 +76,22 @@ class CreateConversionView(APIView):
                 },
                 response_only=True,
             ),
+            OpenApiExample(
+                "Currency not found",
+                value={
+                    "detail": "YYY or EUR not found",
+                },
+                response_only=True,
+                status_codes=[400],
+            ),
+            OpenApiExample(
+                "Third-party API errors",
+                value={
+                    "detail": "104: The maximum allowed API amount of monthly API requests has been reached.",
+                },
+                response_only=True,
+                status_codes=[500],
+            ),
         ],
     )
     def post(self, request):
@@ -97,10 +119,10 @@ class CreateConversionView(APIView):
                 )
             except CurrencyNotFoundException as cnfe:
                 logger.exception(str(cnfe), **serializer.validated_data)
-                raise exceptions.ValidationError(str(cnfe))
+                raise exceptions.ValidationError(detail={"detail": str(cnfe)})
             except ConversionRateServiceException as crse:
                 logger.exception(str(crse), **serializer.validated_data)
-                raise exceptions.APIException(detail=str(crse))
+                raise exceptions.APIException(detail={"detail": str(crse)})
             except Exception as e:
                 # any other exception like from requests.get
                 logger.exception(str(e), **serializer.validated_data)
