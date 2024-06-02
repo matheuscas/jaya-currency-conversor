@@ -1,0 +1,20 @@
+meta {
+  name: Request Conversion
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://localhost:8000/api/conversions/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "from_currency": "USD",
+    "to_currency": "XXX",
+    "amount": 100,
+    "user_id": "user_ojy7RLrDf4P29srovHYk5B"
+  }
+}
