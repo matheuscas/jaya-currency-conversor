@@ -46,3 +46,23 @@ jobs:
         run: |
           cd currency_converter
           poetry run coverage report -m
+          # Extract total coverage percentage and print it
+          total_coverage=$(grep "^TOTAL" coverage_report.txt | awk '{print $NF}')
+          echo "Total Coverage: $total_coverage%"
+
+      - name: Comment on pull request
+        if: always()
+        uses: actions/github-script@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const message = `Test coverage: ${total_coverage}%`;
+            github.issues.createComment({
+              issue_number: prNumber,
+              owner: owner,
+              repo: repo,
+              body: message
+            });
