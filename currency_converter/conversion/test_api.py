@@ -81,7 +81,7 @@ class TestCreateConversionView:
         }
         response = client.post(reverse("conversion-create"), payload, format="json")
         data = response.json()
-        assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == status.HTTP_201_CREATED
         assert data["to_amount"] == converted_amount
         assert data["id"] is not None
         assert data["user_id"] == user.external_id
@@ -152,7 +152,7 @@ class TestCreateConversionView:
                 assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
             else:
                 print(f"{request_num=}")
-                assert response.status_code == status.HTTP_200_OK
+                assert response.status_code == status.HTTP_201_CREATED
 
 
 @pytest.mark.django_db()
