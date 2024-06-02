@@ -1,4 +1,4 @@
-name: CI
+name: Testing
 
 on:
   push:
@@ -31,6 +31,7 @@ jobs:
 
       - name: Run migrations
         run: |
+          cd currency_converter
           poetry run python manage.py migrate
 
       - name: Run tests
