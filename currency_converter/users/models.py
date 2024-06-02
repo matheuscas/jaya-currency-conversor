@@ -14,7 +14,7 @@ class CustomUser(AbstractUser):
     )
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS: list[str] = []
+    REQUIRED_FIELDS: list[str] = []  # type: ignore
 
     objects = CustomUserManager()  # type: ignore
 
