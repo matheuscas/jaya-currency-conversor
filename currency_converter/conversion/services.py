@@ -85,6 +85,7 @@ class ExchangeRatesAPI:
         self, request: ConversionRequest, rates: dict
     ) -> ConversionResponse:
         rates_timestamp = self.parse_timestamp_to_datetime(rates["timestamp"])
+        now = datetime.datetime.now(tz=pytz.UTC)
         if request.from_currency == rates["base"]:
             rate = rates["rates"][request.to_currency]
             return ConversionResponse(
@@ -92,6 +93,7 @@ class ExchangeRatesAPI:
                 rates_timestamp=rates_timestamp,
                 converted_amount=Decimal(request.amount)
                 * Decimal(rates["rates"][request.to_currency]),
+                created_at=now,
             )
         elif request.to_currency == rates["base"]:
             rate = Decimal(1) / Decimal(rates["rates"][request.from_currency])
@@ -99,6 +101,7 @@ class ExchangeRatesAPI:
                 rate=rate,
                 rates_timestamp=rates_timestamp,
                 converted_amount=Decimal(request.amount) * rate,
+                created_at=now,
             )
         else:
             from_currency_rate = Decimal(rates["rates"][request.from_currency])
@@ -108,6 +111,7 @@ class ExchangeRatesAPI:
                 rate=final_rate,
                 rates_timestamp=rates_timestamp,
                 converted_amount=Decimal(request.amount) * final_rate,
+                created_at=now,
             )
 
 
@@ -132,6 +136,7 @@ class ConversionDbService:
         )
         new_conversion: Conversion = dataclasses.replace(conversion)
         new_conversion.id = conversion_obj.id
+        new_conversion.response.created_at = conversion_obj.created_at
         return new_conversion
 
     def listByUser(self, user_id: str) -> list[Conversion]:
@@ -151,6 +156,7 @@ class ConversionDbService:
                         converted_amount=conversion.to_amount,
                         rate=conversion.rate,
                         rates_timestamp=conversion.rates_timestamp,
+                        created_at=conversion.created_at,
                     ),
                 )
             )

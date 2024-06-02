@@ -5,6 +5,8 @@ import pytest
 import datetime
 from unittest.mock import patch
 
+import pytz  # type: ignore
+
 from conversion.domain import Conversion, ConversionRequest, ConversionResponse
 from conversion.exceptions import (
     ConversionRateServiceException,
@@ -423,7 +425,10 @@ class TestConversionDbService:
             response=ConversionResponse(
                 converted_amount=Decimal(98.12),
                 rate=Decimal(1.0),
-                rates_timestamp=datetime.datetime.now(tz=datetime.timezone.utc),
+                rates_timestamp=datetime.datetime.fromtimestamp(
+                    MOCK_EXCHANGE_RATES["timestamp"], pytz.UTC
+                ),
+                created_at=datetime.datetime.now(tz=pytz.UTC),
             ),
         )
 

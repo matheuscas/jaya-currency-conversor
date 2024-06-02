@@ -15,6 +15,7 @@ class ConversionRequest:
 class ConversionResponse:
     rate: Decimal
     rates_timestamp: datetime
+    created_at: datetime
     converted_amount: Decimal
 
 

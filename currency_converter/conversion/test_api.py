@@ -1,3 +1,4 @@
+from decimal import Decimal
 from unittest.mock import patch
 import pytest
 import datetime
@@ -85,6 +86,13 @@ class TestCreateConversionView:
         assert data["to_amount"] == converted_amount
         assert data["id"] is not None
         assert data["user_id"] == user.external_id
+
+        assert data["from_currency"] == from_curreny
+        assert Decimal(data["amount"]) == Decimal(amount)
+        assert data["to_currency"] == to_currency
+        assert data["rate"]
+        assert data["rates_timestamp"]
+        assert data["created_at"]
 
     @pytest.mark.parametrize(
         "from_currency, to_currency",
@@ -197,6 +205,7 @@ class TestGetUserConversionsView:
         assert data[0]["rates_timestamp"] == conversion_item.rates_timestamp.strftime(
             DATE_FORMAT
         )
+        assert data[0]["created_at"] == conversion_item.created_at.strftime(DATE_FORMAT)
 
     def test_user_does_not_exist_expect_exception_status_400(
         self, client, user, disable_throttling

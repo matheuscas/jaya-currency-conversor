@@ -34,6 +34,7 @@ class ConversionResponseSerializer(ConversionRequestSerializer):
     to_amount = serializers.DecimalField(max_digits=5, decimal_places=2)
     rate = serializers.DecimalField(max_digits=5, decimal_places=2)
     rates_timestamp = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S %Z%z")
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S %Z%z")
 
 
 class CreateConversionView(APIView):
@@ -122,6 +123,7 @@ class CreateConversionView(APIView):
                 "to_amount": successful_conversion.response.converted_amount,
                 "rate": successful_conversion.response.rate,
                 "rates_timestamp": successful_conversion.response.rates_timestamp,
+                "created_at": successful_conversion.response.created_at,
             }
             logger.info("Conversion created", **formatted_conversion)
             return Response(
@@ -185,6 +187,7 @@ class GetUserConversionsView(APIView):
                     "to_amount": conversion.response.converted_amount,
                     "rate": conversion.response.rate,
                     "rates_timestamp": conversion.response.rates_timestamp,
+                    "created_at": conversion.response.created_at,
                 }
             )
         return Response(
