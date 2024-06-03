@@ -45,4 +45,13 @@ USER appuser
 
 WORKDIR /app
 
+# Copy the entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+
 COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+
+# Copy the project code into the container
+COPY . /app/
+
+# Set the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
