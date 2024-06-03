@@ -119,9 +119,13 @@ docker-compose up --build
 Bash into the `web` container and create a superuser:
 
 ```
-poetry run python manage.py createsuperuser
+$ cd currency_converter
+$ python manage.py createsuperuser
 ```
+Once created, go to http://0.0.0.0:8000/admin/ and login. 
 
-Using this superuser, you will be able to create users that will be able to use this API. I followed this approach just for simplicity. In a real-world application, I would you regular authentication or even API_KEYS like the third party that we're using.
+Using this superuser, you will create users that are going to be able to use this API. I followed this approach just for simplicity. In a real-world application, I would use regular authentication or even API_KEYS like the third party that we're using.
 
-With the users created, you will see in the list of them, the collum `user_id`. Use it in the payload to POST to `api/conversions` to create a new conversion.
+With the users created, you will see in the list of user, the collum `user_id`. Use it in the payload to POST to `api/conversions` to create a new conversion.
+
+For the API documentation, just access http://0.0.0.0:8000/. 
