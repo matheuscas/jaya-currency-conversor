@@ -16,6 +16,7 @@ shortuuid = "^1.0.13"
 djangorestframework = "^3.15.1"
 drf-spectacular = "^0.27.2"
 django-structlog = "^8.1.0"
+redis = "^5.0.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.1"
